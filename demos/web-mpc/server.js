@@ -7,6 +7,16 @@ var mpc = require('./mpc.js');
 var express = require('express');
 var app = express();
 http = http.Server(app);
+const paillierBigint = require('paillier-bigint')
+
+const n = 799
+const n_2 = n*n
+const g = n+1
+const secret_key = 1088108
+
+var public_key = new paillierBigint.PublicKey(799n, 800n)
+
+// var public_key = new paillierBigint.PublicKey(90385s3n, 903854n)
 
 // Create JIFF server
 var jiff_instance = new JIFFServer(http, {
@@ -20,7 +30,20 @@ jiff_instance.computationMaps.maxCount['web-mpc'] = 100000; // upper bound on ho
 
 // Specify the computation server code for this demo
 var computationClient = jiff_instance.compute('web-mpc', {
-  crypto_provider: true
+  crypto_provider: true,
+  Zp: n_2,
+  safemod: false,
+  hooks: {
+    computeShares: function(instance, secret, parties_list, threshold, Zp){
+      var share_map = {}
+      parties_list.forEach( id => share_map[id] = secret.toString())
+      return share_map
+    },
+    receiveShare: [function(instance, sender_id, share){
+      console.log("Received ", share)
+      return share
+    }]
+  }
 });
 computationClient.wait_for([1], function () {
   // Perform server-side computation.
@@ -43,13 +66,21 @@ computationClient.wait_for([1], function () {
     computationClient.emit('number', [ 1 ], party_count.toString());
 
     // execute the mpc protocol
-    mpc(computationClient, party_count);
+    mpc(computationClient, party_count).then(function (sum) {
+    console.log('SUM IS: ' +  sum);
 
-    // clean shutdown
+    // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
+    var partial_decryption = computationClient.helpers.pow_mod(sum, 2*secret_key*2, n_2)
+    console.log("partial decryption",  partial_decryption)
+
+    computationClient.share(partial_decryption, 2, [1], [ computationClient.id ]);  
+
+      // clean shutdown
     setTimeout(function () {
       console.log('Shutting Down!');
       http.close();
     }, 1000);
+    });
   });
 });
 
