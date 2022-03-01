@@ -2,7 +2,7 @@ module.exports = function (jiffClient, party_count) {
   // Receive shares from all parties that submitted
   var shares = {};
   for (var i = 2; i <= party_count; i++) {
-    shares[i] = jiffClient.share(null, 2, [1, 's1'], [ i ])[i];
+    shares[i] = jiffClient.share(null, 1, [1, 's1'], [ i ])[i];
   }
   console.log(shares)
   // Sum everyone's shares

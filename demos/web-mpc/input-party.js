@@ -42,7 +42,7 @@ var jiffClient = new JIFFClient('http://localhost:8080', 'web-mpc', options);
 // Wait for server to connect
 jiffClient.wait_for([1, 's1'], function () {
   console.log('Connected! ID: ' + jiffClient.id);
-  jiffClient.share(input, 2, [1, 's1'], [ jiffClient.id ]);
+  jiffClient.share(input, 1, [1, 's1'], [ jiffClient.id ]);
   console.log('Shared input!');
   jiffClient.disconnect(true, true);
   console.log('Disconnected!');

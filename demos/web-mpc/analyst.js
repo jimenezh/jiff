@@ -6,7 +6,8 @@ var readline = require('readline');
 var JIFFClient = require('../../lib/jiff-client.js');
 var mpc = require('./mpc.js');
 
-const paillierBigint = require('paillier-bigint')
+const paillierBigint = require('paillier-bigint');
+const share_comb = require('./share_comb.js');
 
 const n = 799
 const n_2 = n*n
@@ -64,7 +65,7 @@ options.hooks = {
     return share_map
   },
   receiveShare: [function(instance, sender_id, share){
-    console.log("Received ", share)
+    console.log("Received ", share, " from ", sender_id)
     return share
   }]
 }
@@ -90,17 +91,26 @@ jiffClient.wait_for(['s1'], function () {
       party_count = parseInt(party_count);
       console.log('BEGIN: # of parties ' + party_count);
 
-      mpc(jiffClient, party_count).then(function (sum) {
-        console.log('SUM IS: ' +  sum);
+
+      mpc(jiffClient, party_count).then(function (sum_ciphertext) {
+        console.log("Ciphertext sum", sum_ciphertext)
+        
 
         // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
-        var partial_decryption = jiffClient.helpers.pow_mod(sum, 2*secret_key*2, n_2)
+        var partial_decryption = jiffClient.helpers.pow_mod(sum_ciphertext, 2*secret_key*2, n_2)
         console.log("partial decryption",  partial_decryption)
 
-        jiffClient.share(partial_decryption, 2, ['s1'], [ jiffClient.id ]);
+        jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
+
+        share_comb(jiffClient, party_count).then(function (sum){
+          console.log('SUM IS: ' +  sum);
+
+
+      
 
         jiffClient.disconnect(true, true);
         rl.close();
+      });
       });
     });
   });

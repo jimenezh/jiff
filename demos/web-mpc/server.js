@@ -2,6 +2,7 @@
 var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
 var mpc = require('./mpc.js');
+var share_comb = require('./share_comb.js');
 
 // Create express and http servers
 var express = require('express');
@@ -40,7 +41,7 @@ var computationClient = jiff_instance.compute('web-mpc', {
       return share_map
     },
     receiveShare: [function(instance, sender_id, share){
-      console.log("Received ", share)
+      console.log("Received ", share, " from ", sender_id)
       return share
     }]
   }
@@ -73,7 +74,9 @@ computationClient.wait_for([1], function () {
     var partial_decryption = computationClient.helpers.pow_mod(sum, 2*secret_key*2, n_2)
     console.log("partial decryption",  partial_decryption)
 
-    computationClient.share(partial_decryption, 2, [1], [ computationClient.id ]);  
+    computationClient.share(partial_decryption, 1, [1], [ computationClient.id ]);  
+
+    share_comb(computationClient, party_count)
 
       // clean shutdown
     setTimeout(function () {
