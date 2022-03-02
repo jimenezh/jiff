@@ -1,9 +1,6 @@
-module.exports = function (jiffClient, party_count) {
+module.exports = function (jiffClient, partial_decryption) {
     // Receive shares from all parties that submitted
-    var shares = {};
-    for (var i = 2; i <= party_count; i++) {
-      shares[i] = jiffClient.share(null, 1, [1, 's1'], [ i ])[i];
-    }
+    shares = jiffClient.share(partial_decryption, 1, [1, 's1'], [ 1,'s1' ]);
     
     // New dummy share
     // TODO: add code to combine ciphertext shares

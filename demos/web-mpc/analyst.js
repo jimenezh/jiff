@@ -8,12 +8,15 @@ var mpc = require('./mpc.js');
 
 const paillierBigint = require('paillier-bigint');
 const share_comb = require('./share_comb.js');
+var rand_comb = require('./rand_comb.js');
 
 const n = 799
 const n_2 = n*n
 const g = n+1
 const secret_key = 1584955
-
+const phi_n = 736
+const n_inv_mod_phi_n = 479
+const x = 100
 var public_key = new paillierBigint.PublicKey(799n, 800n)
 
 // var public_key = new paillierBigint.PublicKey(903853n, 903854n)
@@ -60,8 +63,9 @@ options.secret_key = keys.secret_key;
 
 options.hooks = {
   computeShares: function(instance, secret, parties_list, threshold, Zp){
+    console.log("Computing shares of ", secret)
     var share_map = {}
-    parties_list.forEach( id => share_map[id] = secret.toString())
+    parties_list.forEach( id => share_map[id] = secret)
     return share_map
   },
   receiveShare: [function(instance, sender_id, share){
@@ -103,13 +107,23 @@ jiffClient.wait_for(['s1'], function () {
         jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
 
         share_comb(jiffClient, party_count).then(function (sum){
-          console.log('SUM IS: ' +  sum);
+          console.log('(DUMMY) PLAINTEXT SUM IS: ' +  sum);
 
+          // Partial Randomness Phase
+          // First step is to do (1-m*n)^x mod n where m is the plaintext message
+          partial_rand = jiffClient.helpers.pow_mod((1-(sum*n)), x, n)
+          // Second step is multiplying by c, the ciphertext
+          partial_rand = jiffClient.helpers.mod(sum_ciphertext*partial_rand , n)
+          console.log("Partial Randomness is ", partial_rand)
+          // Sharing
+          
 
-      
+          rand_comb(jiffClient, partial_rand).then(function (total_rand){
+            console.log("(DUMMY) total rand is ", total_rand)
+          });
 
-        jiffClient.disconnect(true, true);
-        rl.close();
+          jiffClient.disconnect(true, true);
+          rl.close();
       });
       });
     });

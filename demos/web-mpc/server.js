@@ -3,6 +3,7 @@ var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
 var mpc = require('./mpc.js');
 var share_comb = require('./share_comb.js');
+var rand_comb = require('./rand_comb.js');
 
 // Create express and http servers
 var express = require('express');
@@ -14,6 +15,9 @@ const n = 799
 const n_2 = n*n
 const g = n+1
 const secret_key = 1088108
+const phi_n = 736
+const n_inv_mod_phi_n = 479
+const x = 379
 
 var public_key = new paillierBigint.PublicKey(799n, 800n)
 
@@ -36,6 +40,7 @@ var computationClient = jiff_instance.compute('web-mpc', {
   safemod: false,
   hooks: {
     computeShares: function(instance, secret, parties_list, threshold, Zp){
+      console.log("Computing share for ", secret)
       var share_map = {}
       parties_list.forEach( id => share_map[id] = secret.toString())
       return share_map
@@ -67,23 +72,33 @@ computationClient.wait_for([1], function () {
     computationClient.emit('number', [ 1 ], party_count.toString());
 
     // execute the mpc protocol
-    mpc(computationClient, party_count).then(function (sum) {
-    console.log('SUM IS: ' +  sum);
+    mpc(computationClient, party_count).then(function (sum_ciphertext) {
+    console.log('SUM CIPHERTEXT IS: ' +  sum_ciphertext);
 
     // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
-    var partial_decryption = computationClient.helpers.pow_mod(sum, 2*secret_key*2, n_2)
+    var partial_decryption = computationClient.helpers.pow_mod(sum_ciphertext, 2*secret_key*2, n_2)
     console.log("partial decryption",  partial_decryption)
 
     computationClient.share(partial_decryption, 1, [1], [ computationClient.id ]);  
 
-    share_comb(computationClient, party_count)
+    share_comb(computationClient, party_count).then(function (sum) {
 
-      // clean shutdown
-    setTimeout(function () {
-      console.log('Shutting Down!');
-      http.close();
-    }, 1000);
-    });
+      // Partial Randomness Phase
+        // First step is to do (1-m*n)^x mod n where m is the plaintext message
+        partial_rand = computationClient.helpers.pow_mod((1-(sum*n)), x, n)
+        // Second step is multiplying by c, the ciphertext
+        partial_rand = computationClient.helpers.mod(sum_ciphertext*partial_rand , n)
+        console.log("Partial Randomness is ", partial_rand)
+        // Sharing
+        rand_comb(computationClient,partial_rand );
+
+        // clean shutdown
+        setTimeout(function () {
+          console.log('Shutting Down!');
+          http.close();
+        }, 1000);
+        });
+      });
   });
 });
 
