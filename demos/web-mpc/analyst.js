@@ -6,20 +6,30 @@ var readline = require('readline');
 var JIFFClient = require('../../lib/jiff-client.js');
 var mpc = require('./mpc.js');
 
-const paillierBigint = require('paillier-bigint');
+const partial_dec = require('./paillier/partial_dec')
 const share_comb = require('./share_comb.js');
 var rand_comb = require('./rand_comb.js');
 
 const n = 799
 const n_2 = n*n
 const g = n+1
-const secret_key = 1584955
+const s_analyst = 1584955
 const phi_n = 736
 const n_inv_mod_phi_n = 479
-const x = 100
-var public_key = new paillierBigint.PublicKey(799n, 800n)
+const randomness_exp = 100
+const id = 1 
+const t = 2
+const party_count = 2
 
-// var public_key = new paillierBigint.PublicKey(903853n, 903854n)
+const private_key = {
+  n: n,
+  threshold: t,
+  id: id,
+  s: s_analyst, 
+  party_count: party_count,
+  rand_exp: randomness_exp
+}
+
 
 // Handle storing and loading keys
 var KEYS_FILE = 'keys.json';
@@ -99,9 +109,9 @@ jiffClient.wait_for(['s1'], function () {
       mpc(jiffClient, party_count).then(function (sum_ciphertext) {
         console.log("Ciphertext sum", sum_ciphertext)
         
+        partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
 
         // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
-        var partial_decryption = jiffClient.helpers.pow_mod(sum_ciphertext, 2*secret_key*2, n_2)
         console.log("partial decryption",  partial_decryption)
 
         jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
@@ -111,7 +121,7 @@ jiffClient.wait_for(['s1'], function () {
 
           // Partial Randomness Phase
           // First step is to do (1-m*n)^x mod n where m is the plaintext message
-          partial_rand = jiffClient.helpers.pow_mod((1-(sum*n)), x, n)
+          partial_rand = jiffClient.helpers.pow_mod((1-(sum*n)), randomness_exp, n)
           // Second step is multiplying by c, the ciphertext
           partial_rand = jiffClient.helpers.mod(sum_ciphertext*partial_rand , n)
           console.log("Partial Randomness is ", partial_rand)
@@ -126,6 +136,6 @@ jiffClient.wait_for(['s1'], function () {
           rl.close();
       });
       });
-    });
+    })});
   });
 });
