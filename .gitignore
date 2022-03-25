@@ -185,3 +185,9 @@ typings/
 
 logs/
 *.swp
+
+# python virtual environment
+bin/
+lib/python3.8
+pyvenv.cfg
+isympy.1
