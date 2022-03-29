@@ -14,19 +14,20 @@ ex`from math import factorial`
 ex`from tno.mpc.protocols.distributed_keygen.paillier_shared_key import PaillierSharedKey`
 ex`from tno.mpc.encryption_schemes.paillier import PaillierCiphertext, Paillier, PaillierPublicKey`
 
+// Constants needed for private key
 const delta = await py`factorial(${private_key.party_count})`
-const extra_factor = await py`4*(${delta}**2)`
+const theta = await py`4*(${delta}**2)`
 
-console.log(private_key, 'delta', delta, 'extra', extra_factor)
-
-
-const partial_decryption =  await py`PaillierSharedKey (
+// Create a Paillier private key to use private key methods
+// For this, we need a paillier public key to encrypt the raw input ciphertext
+// Since python-bridge only allows return of ints, we do this all in one step
+const partial_decryption =  await py`int(PaillierSharedKey (
   ${private_key.n}, 
   ${private_key.threshold} , 
   ${private_key.id}, 
   ${private_key.s}, 
   ${delta}, 
-  ${extra_factor}, 
+  ${theta}, 
   ${private_key.rand_exp}).partial_decrypt(
     PaillierCiphertext(
       ${raw_ciphertext},
@@ -36,12 +37,10 @@ const partial_decryption =  await py`PaillierSharedKey (
         share_secret_key=False
       )
     )  
-  ).digits()`
-// console.log("python private key is", python_private_key)
+  ))`
 
 end();
 
+
 return parseInt(partial_decryption)
-
-
 }

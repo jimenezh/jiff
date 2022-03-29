@@ -2,7 +2,8 @@
 var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
 var mpc = require('./mpc.js');
-var share_comb = require('./share_comb.js');
+const get_analyst_partial_dec = require('./get_all_partial_decs.js');
+const share_comb = require('./paillier/share_comb')
 var rand_comb = require('./rand_comb.js');
 
 // Create express and http servers
@@ -11,7 +12,8 @@ var app = express();
 http = http.Server(app);
 
 // Paillier functions
-const partial_dec = require('./paillier/partial_dec')
+const partial_dec = require('./paillier/partial_dec');
+const share = require('../../lib/client/share.js');
 
 const n = 799
 const n_2 = n*n
@@ -22,12 +24,12 @@ const n_inv_mod_phi_n = 479
 const randomness_exp = 379
 const t = 2
 const party_count = 2
-const id = 2
+const python_id = 1
 
 const private_key = {
   n: n,
   threshold: t,
-  id: id,
+  id: python_id,
   s: s_server, 
   party_count: party_count,
   rand_exp: randomness_exp
@@ -87,35 +89,27 @@ computationClient.wait_for([1], function () {
     mpc(computationClient, party_count).then(function (sum_ciphertext) {
     console.log('SUM CIPHERTEXT IS: ' +  sum_ciphertext);
 
-    partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
-      
-    
-
-    // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
-    // var partial_decryption = computationClient.helpers.pow_mod(sum_ciphertext, 2*s_server*2, n_2)
+    // Partial decryption
+    partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){ 
     console.log("partial decryption",  partial_decryption)
-
-
+    // Share with client
     computationClient.share(partial_decryption, 1, [1], [ computationClient.id ]);  
-
-    share_comb(computationClient, party_count).then(function (sum) {
-
-      // Partial Randomness Phase
-        // First step is to do (1-m*n)^x mod n where m is the plaintext message
-        partial_rand = computationClient.helpers.pow_mod((1-(sum*n)), randomness_exp, n)
-        // Second step is multiplying by c, the ciphertext
-        partial_rand = computationClient.helpers.mod(sum_ciphertext*partial_rand , n)
-        console.log("Partial Randomness is ", partial_rand)
-        // Sharing
-        rand_comb(computationClient,partial_rand );
-
-        // clean shutdown
+    // Get analyst partial decryption
+    get_analyst_partial_dec(computationClient, partial_decryption).then(function (analyst_partial_dec){
+      // Share combine
+      partial_dict = {1: partial_decryption, 2: analyst_partial_dec}
+      share_comb(private_key,partial_dict ).then(function (plaintext){
+        console.log("plaintext", plaintext)
+        
         setTimeout(function () {
           console.log('Shutting Down!');
           http.close();
         }, 1000);
         });
       });
+    });
+      
+      
     })});
 });
 

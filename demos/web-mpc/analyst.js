@@ -6,9 +6,9 @@ var readline = require('readline');
 var JIFFClient = require('../../lib/jiff-client.js');
 var mpc = require('./mpc.js');
 
-const partial_dec = require('./paillier/partial_dec')
-const share_comb = require('./share_comb.js');
-var rand_comb = require('./rand_comb.js');
+const partial_dec = require('./paillier/partial_dec');
+const get_server_partial_dec = require('./get_all_partial_decs');
+const share_comb = require('./paillier/share_comb')
 
 const n = 799
 const n_2 = n*n
@@ -17,20 +17,18 @@ const s_analyst = 1584955
 const phi_n = 736
 const n_inv_mod_phi_n = 479
 const randomness_exp = 100
-const id = 1 
 const t = 2
 const party_count = 2
+const python_id = 2
 
 const private_key = {
   n: n,
   threshold: t,
-  id: id,
+  id: python_id,
   s: s_analyst, 
   party_count: party_count,
   rand_exp: randomness_exp
 }
-
-
 // Handle storing and loading keys
 var KEYS_FILE = 'keys.json';
 function save_keys() {
@@ -108,34 +106,30 @@ jiffClient.wait_for(['s1'], function () {
 
       mpc(jiffClient, party_count).then(function (sum_ciphertext) {
         console.log("Ciphertext sum", sum_ciphertext)
-        
-        partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
 
-        // For partial decryption we do c^(2*delta*s_i) mod n^2, where delta = factorial of num of computing parties = 2
+        // Get partial decryption
+        partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
         console.log("partial decryption",  partial_decryption)
 
+        // Share with server
         jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
+        // Server's partial dec
+        get_server_partial_dec(jiffClient, partial_decryption).then(function (server_partial_dec){
+          // Share combine to get plaintext
+          partial_dict = {1: partial_decryption, 2: server_partial_dec}
+          share_comb(private_key, partial_dict).then(function (plaintext){
+            console.log("plaintext ", plaintext)
 
-        share_comb(jiffClient, party_count).then(function (sum){
-          console.log('(DUMMY) PLAINTEXT SUM IS: ' +  sum);
+            jiffClient.disconnect(true, true);
+            rl.close();
+          })
+        })
 
-          // Partial Randomness Phase
-          // First step is to do (1-m*n)^x mod n where m is the plaintext message
-          partial_rand = jiffClient.helpers.pow_mod((1-(sum*n)), randomness_exp, n)
-          // Second step is multiplying by c, the ciphertext
-          partial_rand = jiffClient.helpers.mod(sum_ciphertext*partial_rand , n)
-          console.log("Partial Randomness is ", partial_rand)
-          // Sharing
-          
 
-          rand_comb(jiffClient, partial_rand).then(function (total_rand){
-            console.log("(DUMMY) total rand is ", total_rand)
-          });
+        
 
-          jiffClient.disconnect(true, true);
-          rl.close();
+    });
       });
-      });
-    })});
+    });
   });
 });

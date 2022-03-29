@@ -1,6 +1,7 @@
 var JIFFClient = require('../../lib/jiff-client.js');
 
 const paillierBigint = require('paillier-bigint');
+const share = require('../../lib/client/share.js');
 
 const n = 799
 const n_2 = n*n
