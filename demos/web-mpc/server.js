@@ -2,8 +2,9 @@
 var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
 var mpc = require('./mpc.js');
-const get_analyst_partial_dec = require('./get_all_partial_decs.js');
+const get_analyst_partial_dec = require('./get_other_partial_dec.js');
 const share_comb = require('./paillier/share_comb')
+const rand_recovery = require('./paillier/rand_rec');
 var rand_comb = require('./rand_comb.js');
 
 // Create express and http servers
@@ -100,11 +101,21 @@ computationClient.wait_for([1], function () {
       partial_dict = {1: partial_decryption, 2: analyst_partial_dec}
       share_comb(private_key,partial_dict ).then(function (plaintext){
         console.log("plaintext", plaintext)
-        
-        setTimeout(function () {
-          console.log('Shutting Down!');
-          http.close();
-        }, 1000);
+
+        // Randomness Recovery
+        // Compute randomness of sum
+        rand_recovery(private_key, sum_ciphertext, plaintext).then(function (rand){
+          console.log("rand result", rand);
+          rand_comb(computationClient, rand).then(function (total_rand){
+              
+            console.log("total randomness is ", total_rand)
+
+            setTimeout(function () {
+              console.log('Shutting Down!');
+              http.close();
+            }, 1000);
+            });
+          });
         });
       });
     });

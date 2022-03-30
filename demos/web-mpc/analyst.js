@@ -7,8 +7,10 @@ var JIFFClient = require('../../lib/jiff-client.js');
 var mpc = require('./mpc.js');
 
 const partial_dec = require('./paillier/partial_dec');
-const get_server_partial_dec = require('./get_all_partial_decs');
-const share_comb = require('./paillier/share_comb')
+const get_server_partial_dec = require('./get_other_partial_dec');
+const share_comb = require('./paillier/share_comb');
+const rand_recovery = require('./paillier/rand_rec');
+const rand_comb = require('./rand_comb.js');
 
 const n = 799
 const n_2 = n*n
@@ -118,10 +120,22 @@ jiffClient.wait_for(['s1'], function () {
           // Share combine to get plaintext
           partial_dict = {1: partial_decryption, 2: server_partial_dec}
           share_comb(private_key, partial_dict).then(function (plaintext){
-            console.log("plaintext ", plaintext)
+            console.log("plaintext ", plaintext);
+            
+            // Randomness Recovery
+          // Compute randomness of sum
+          rand_recovery(private_key, sum_ciphertext, plaintext).then(function (rand){
+            console.log("partial randonmness", rand);
+            // Get total randomness, i.e. the product of analyst and server's partial randomness
+            rand_comb(jiffClient, rand).then(function (total_rand){
+              
+              console.log("total randomness is ", total_rand)
+              // Verification step
 
-            jiffClient.disconnect(true, true);
-            rl.close();
+              jiffClient.disconnect(true, true);
+              rl.close();
+            });
+          });
           })
         })
 
