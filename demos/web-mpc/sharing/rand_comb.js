@@ -1,8 +1,6 @@
 module.exports = function (jiffClient, partial_rand) {
     // Receive shares from all parties that submitted
     shares = jiffClient.share(partial_rand, 1, [1, 's1'], [ 1,'s1' ]);
-
-    console.log(shares)
     
     // Multiply everyone's shares
     var total_rand = shares['s1'].smult(shares['1'])

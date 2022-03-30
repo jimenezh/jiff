@@ -6,7 +6,7 @@ module.exports = async function (private_key,  raw_ciphertext, plaintext) {
         python: '/Users/sheilajimenez/Desktop/jiff/bin/python'
     });
     const {
-        ex, // It does not return value!
+        ex,
         end,
         } = py;
     
@@ -20,6 +20,7 @@ module.exports = async function (private_key,  raw_ciphertext, plaintext) {
 
     // Create a Paillier private key to use private key methods
     // For this, we need a paillier public key to encrypt the raw input ciphertext
+    // use partial rand rec method
     // Since python-bridge only allows return of ints, we do this all in one step
     const partial_decryption =  await py`int(PaillierSharedKey (
     ${private_key.n}, 
@@ -42,9 +43,5 @@ module.exports = async function (private_key,  raw_ciphertext, plaintext) {
 
     end();
 
-    console.log("Partial decryption is ", partial_decryption)
-
     return partial_decryption
-
-
 }

@@ -1,6 +1,18 @@
 # WEB-MPC in JIFF
 A (basic) demo for asynchronously and securly summing secrets from many input parties, with only two compute parties: a server, and an analyst.
 
+## Setup
+In jiff directory, run the following  commands:
+* npm install python-bridge
+* python3 -m .
+* source bin/activate
+
+Install the following pip packages within the virtual envirnoment
+* pip3 install tno.mpc.protocols.distributed_keygen[gmpy]
+* pip3 install git+https://github.com/jimenezh/protocols.distributed_keygen
+
+Make sure to keep the python environment active during the execution. 
+
 ## Roles
 We have three roles:
 * Server (server.js): handles routing and storing all communications, and participates in the final aggregation with analyst.
@@ -37,6 +49,10 @@ If the file does not exist or has a bad format, it will use new keys.
 Finally, the server is usually responsible for delivering all parties keys to each other. If you do not wish to trust the server to perform this step (e.g. man in the middle attacks),
 you have to ensure delivery of the keys to the parties via some other channel (e.g. post request to the analyst directly, reading from a file, etc), and make sure these keys
 are passed to the constructor of JIFFClient at the input parties, in a similar way to how analyst.js loads keys.
+
+# Paillier Threshold
+
+This demo uses [https://github.com/Submersible/node-python-bridge](python-bridge) to spawn a python interpreter and use a [https://github.com/jimenezh/protocols.distributed_keygen](Paillier threshold decryption library which supports randomness-recovery) based on the [https://github.com/TNO-MPC/protocols.distributed_keygen](TNO library). 
 
 # The real WEB-MPC
 This is a stripped down demo showing the high level organization and implementation idea. We have built and regularly deployed a more sophisticated platform of a similar name for computing statistics over private data.

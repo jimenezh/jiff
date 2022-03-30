@@ -13,15 +13,11 @@ options = {
 
 options.hooks = {
   computeShares: function(instance, ciphertext, parties_list, threshold, Zp){
-    console.log("Computing shares from ", ciphertext)
-
     ciphertext = ciphertext.toString()
 
     share_map = {}
 
     parties_list.forEach( id => share_map[id] = ciphertext)
-
-    console.log("share map is ", share_map)
 
     return share_map
 

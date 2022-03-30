@@ -1,11 +1,11 @@
 // Dependencies
 var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
-var mpc = require('./mpc.js');
-const get_analyst_partial_dec = require('./get_other_partial_dec.js');
+var mpc = require('./sharing/mpc.js');
+const get_analyst_partial_dec = require('./sharing/get_other_partial_dec.js');
 const share_comb = require('./paillier/share_comb')
-const rand_recovery = require('./paillier/rand_rec');
-var rand_comb = require('./rand_comb.js');
+const partial_rand_rec = require('./paillier/partial_rand_rec');
+var rand_comb = require('./sharing/rand_comb.js');
 
 // Create express and http servers
 var express = require('express');
@@ -14,7 +14,6 @@ http = http.Server(app);
 
 // Paillier functions
 const partial_dec = require('./paillier/partial_dec');
-const share = require('../../lib/client/share.js');
 
 const n = 799
 const n_2 = n*n
@@ -55,13 +54,11 @@ var computationClient = jiff_instance.compute('web-mpc', {
   safemod: false,
   hooks: {
     computeShares: function(instance, secret, parties_list, threshold, Zp){
-      console.log("Computing share for ", secret)
       var share_map = {}
       parties_list.forEach( id => share_map[id] = secret.toString())
       return share_map
     },
     receiveShare: [function(instance, sender_id, share){
-      console.log("Received ", share, " from ", sender_id)
       return share
     }]
   }
@@ -92,7 +89,7 @@ computationClient.wait_for([1], function () {
 
     // Partial decryption
     partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){ 
-    console.log("partial decryption",  partial_decryption)
+    console.log("PARTIAL DECRYPTION IS:",  partial_decryption)
     // Share with client
     computationClient.share(partial_decryption, 1, [1], [ computationClient.id ]);  
     // Get analyst partial decryption
@@ -100,15 +97,15 @@ computationClient.wait_for([1], function () {
       // Share combine
       partial_dict = {1: partial_decryption, 2: analyst_partial_dec}
       share_comb(private_key,partial_dict ).then(function (plaintext){
-        console.log("plaintext", plaintext)
+        console.log("TOTAL SUM IS:", plaintext)
 
         // Randomness Recovery
         // Compute randomness of sum
-        rand_recovery(private_key, sum_ciphertext, plaintext).then(function (rand){
-          console.log("rand result", rand);
+        partial_rand_rec(private_key, sum_ciphertext, plaintext).then(function (rand){
+          console.log("PARTIAL RANDOMNESS IS:", rand);
           rand_comb(computationClient, rand).then(function (total_rand){
               
-            console.log("total randomness is ", total_rand)
+            console.log("TOTAL RANDOMNESS IS:", total_rand)
 
             setTimeout(function () {
               console.log('Shutting Down!');

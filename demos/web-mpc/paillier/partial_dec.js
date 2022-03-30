@@ -6,7 +6,7 @@ const py = python({
     python: '/Users/sheilajimenez/Desktop/jiff/bin/python'
 });
 const {
-    ex, // It does not return value!
+    ex,
     end,
   } = py;
 
@@ -20,6 +20,7 @@ const theta = await py`4*(${delta}**2)`
 
 // Create a Paillier private key to use private key methods
 // For this, we need a paillier public key to encrypt the raw input ciphertext
+// Use partial decrypt method
 // Since python-bridge only allows return of ints, we do this all in one step
 const partial_decryption =  await py`int(PaillierSharedKey (
   ${private_key.n}, 

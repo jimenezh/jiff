@@ -4,13 +4,13 @@ var fs = require('fs');
 var readline = require('readline');
 
 var JIFFClient = require('../../lib/jiff-client.js');
-var mpc = require('./mpc.js');
+var mpc = require('./sharing/mpc.js');
 
 const partial_dec = require('./paillier/partial_dec');
-const get_server_partial_dec = require('./get_other_partial_dec');
+const get_server_partial_dec = require('./sharing/get_other_partial_dec');
 const share_comb = require('./paillier/share_comb');
-const rand_recovery = require('./paillier/rand_rec');
-const rand_comb = require('./rand_comb.js');
+const partial_rand_rec = require('./paillier/partial_rand_rec');
+const rand_comb = require('./sharing/rand_comb.js');
 
 const n = 799
 const n_2 = n*n
@@ -73,13 +73,11 @@ options.secret_key = keys.secret_key;
 
 options.hooks = {
   computeShares: function(instance, secret, parties_list, threshold, Zp){
-    console.log("Computing shares of ", secret)
     var share_map = {}
     parties_list.forEach( id => share_map[id] = secret)
     return share_map
   },
   receiveShare: [function(instance, sender_id, share){
-    console.log("Received ", share, " from ", sender_id)
     return share
   }]
 }
@@ -107,11 +105,11 @@ jiffClient.wait_for(['s1'], function () {
 
 
       mpc(jiffClient, party_count).then(function (sum_ciphertext) {
-        console.log("Ciphertext sum", sum_ciphertext)
+        console.log("SUM CIPHERTEXT IS: ", sum_ciphertext)
 
         // Get partial decryption
         partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
-        console.log("partial decryption",  partial_decryption)
+        console.log("PARTIAL DECRYPTION IS: ",  partial_decryption)
 
         // Share with server
         jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
@@ -120,17 +118,16 @@ jiffClient.wait_for(['s1'], function () {
           // Share combine to get plaintext
           partial_dict = {1: partial_decryption, 2: server_partial_dec}
           share_comb(private_key, partial_dict).then(function (plaintext){
-            console.log("plaintext ", plaintext);
+            console.log("TOTAL SUM IS: ", plaintext);
             
             // Randomness Recovery
           // Compute randomness of sum
-          rand_recovery(private_key, sum_ciphertext, plaintext).then(function (rand){
-            console.log("partial randonmness", rand);
+          partial_rand_rec(private_key, sum_ciphertext, plaintext).then(function (rand){
+            console.log("PARTIAL RANDOMNESS IS: ", rand);
             // Get total randomness, i.e. the product of analyst and server's partial randomness
             rand_comb(jiffClient, rand).then(function (total_rand){
-              
-              console.log("total randomness is ", total_rand)
-              // Verification step
+              console.log("TOTAL RANDOMNESS IS:", total_rand)
+              // Verification step?
 
               jiffClient.disconnect(true, true);
               rl.close();

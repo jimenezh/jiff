@@ -1,20 +1,21 @@
 module.exports = async function (n,  plaintext) {
-    // Requirements for using python TNO paillier package
-    const assert = require('assert');
+    // spawning python interpreter
     const python = require('python-bridge');
     const py = python({
         python: '/Users/sheilajimenez/Desktop/jiff/bin/python'
     });
     
+    // ex used for when nothing needs to be returned
+    // py used for when a return value is needed
+    // end terminates the python interpreter
     const {
-        ex, // It does not return value!
+        ex,
         end,
       } = py;
 
-    console.log(n, typeof(n), plaintext, typeof(plaintext))
-
     ex`from tno.mpc.encryption_schemes.paillier import PaillierCiphertext, Paillier, PaillierPublicKey`
 
+    // Create paillier encryption scheme and then encrypt plaintext
     ciphertext = await py`int(Paillier(
         public_key=PaillierPublicKey(${n}, ${n}+1),
         secret_key=None,
