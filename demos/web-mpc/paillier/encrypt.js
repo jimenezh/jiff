@@ -1,4 +1,6 @@
 module.exports = async function (n,  plaintext) {
+    const BigNumber = require('bignumber.js');
+
     // spawning python interpreter
     const python = require('python-bridge');
     const py = python({
@@ -14,16 +16,17 @@ module.exports = async function (n,  plaintext) {
       } = py;
 
     ex`from tno.mpc.encryption_schemes.paillier import PaillierCiphertext, Paillier, PaillierPublicKey`
-
     // Create paillier encryption scheme and then encrypt plaintext
-    ciphertext = await py`int(Paillier(
-        public_key=PaillierPublicKey(${n}, ${n}+1),
+    console.log(n, plaintext)
+    ciphertext = await py`str(Paillier(
+        public_key=PaillierPublicKey(int(${n.toPrecision()}), int(${n.toPrecision()})+1),
         secret_key=None,
         share_secret_key=False).encrypt(
-            ${plaintext}
+            int(${plaintext.toPrecision()})
         ).value)`
 
 
     end();
-    return ciphertext
+    console.log('ciphertext os ', ciphertext)
+    return BigNumber(ciphertext)
 }

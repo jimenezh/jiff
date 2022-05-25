@@ -14,14 +14,14 @@ http = http.Server(app);
 
 // Paillier functions
 const partial_dec = require('./paillier/partial_dec');
-
-const n = 799
+// 128 bit keys
+const n = 145003400227199117427696322487384636953
 const n_2 = n*n
 const g = n+1
-const s_server = 1088108
-const phi_n = 736
-const n_inv_mod_phi_n = 479
-const randomness_exp = 379
+const s_server = 3221617969964723778547934958085786479665640851357965522010273884159237214908
+const phi_n = 6831438583059476760
+const n_inv_mod_phi_n = 820306736477769193
+const randomness_exp = 3
 const t = 2
 const party_count = 2
 const python_id = 1
@@ -59,6 +59,7 @@ var computationClient = jiff_instance.compute('web-mpc', {
       return share_map
     },
     receiveShare: [function(instance, sender_id, share){
+      console.log("receive ", BigInt(share).toString(), sender_id)
       return share
     }]
   }
@@ -85,7 +86,7 @@ computationClient.wait_for([1], function () {
 
     // execute the mpc protocol
     mpc(computationClient, party_count).then(function (sum_ciphertext) {
-    console.log('SUM CIPHERTEXT IS: ' +  sum_ciphertext);
+      console.log("SUM CIPHERTEXT IS: ", sum_ciphertext);
 
     // Partial decryption
     partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){ 
