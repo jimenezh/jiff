@@ -1,8 +1,10 @@
 // Dependencies
+const BigNumber = require('bignumber.js');
 var path = require('path');
 var fs = require('fs');
 var readline = require('readline');
 
+var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var JIFFClient = require('../../lib/jiff-client.js');
 var mpc = require('./sharing/mpc.js');
 
@@ -12,13 +14,13 @@ const share_comb = require('./paillier/share_comb');
 const partial_rand_rec = require('./paillier/partial_rand_rec');
 const rand_comb = require('./sharing/rand_comb.js');
 
-const n = 145003400227199117427696322487384636953
-const n_2 = n*n
-const g = n+1
-const s_analyst = 5148292062135500173989854104139388859592433720747476073486135662536290386530
-const phi_n = 6831438583059476760
-const n_inv_mod_phi_n = 820306736477769193
-const randomness_exp = 820306736477769190
+const n =  BigNumber('264080106179843937231700072110084466873')
+const n_square = n.pow(2)
+const g = n.plus(1)
+const s_analyst = BigNumber('28988199722604156253450775183257599379428758752015878310648682558621290677955')
+const phi_n = 24376625185831748040n
+const n_inv_mod_phi_n = 18327295311094937137n
+const randomness_exp = BigNumber('18327295311094937130')
 const t = 2
 const party_count = 2
 const python_id = 2
@@ -62,7 +64,7 @@ var rl = readline.createInterface({
 var options = {
   crypto_provider: true, // do not bother with preprocessing for this demo
   party_id: 1, // we are the analyst => we want party_id = 1
-  Zp: n_2,
+  Zp: n_square,
   safemod: false
 };
 
@@ -77,14 +79,14 @@ options.hooks = {
     parties_list.forEach( id => share_map[id] = secret)
     return share_map
   },
-  receiveShare: [function(instance, sender_id, share){
-    return share
-  }]
 }
 
 
 // Create the instance
 var jiffClient = new JIFFClient('http://localhost:8080', 'web-mpc', options);
+
+// Applying big number extension
+jiffClient.apply_extension(jiff_bignumber);
 
 // Wait for server to connect
 jiffClient.wait_for(['s1'], function () {  

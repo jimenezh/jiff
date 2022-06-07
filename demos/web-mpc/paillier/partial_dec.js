@@ -1,5 +1,5 @@
 module.exports = async function (private_key,  raw_ciphertext) {
-  
+const BigNumber = require('bignumber.js'); 
 // Requirements for using python TNO paillier package
 const assert = require('assert');
 const python = require('python-bridge');
@@ -19,25 +19,27 @@ ex`from tno.mpc.encryption_schemes.paillier import PaillierCiphertext, Paillier,
 const delta = await py`factorial(${private_key.party_count})`
 const theta = await py`4*(${delta}**2)`
 
-const n = BigInt(private_key.n).toString()
-const rand_exp = BigInt(private_key.rand_exp).toString()
+const n_string = private_key.n.toPrecision()
+const s_string = private_key.s.toPrecision()
+const rand_exp_string = private_key.rand_exp.toPrecision()
+const ciphertext_string = raw_ciphertext.toPrecision()
 
 // Create a Paillier private key to use private key methods
 // For this, we need a paillier public key to encrypt the raw input ciphertext
 // Use partial decrypt method
 // Since python-bridge only allows return of ints, we do this all in one step
-const partial_decryption =  await py`int(PaillierSharedKey (
-  int(${n}), 
+const partial_decryption =  await py`str(PaillierSharedKey (
+  int(${n_string}), 
   ${private_key.threshold} , 
   ${private_key.id}, 
-  ${private_key.s}, 
+  int(${s_string}), 
   ${delta}, 
   ${theta}, 
-  int(${rand_exp})).partial_decrypt(
+  int(${rand_exp_string})).partial_decrypt(
     PaillierCiphertext(
-      ${raw_ciphertext},
+      int(${ciphertext_string}),
       Paillier(
-        public_key=PaillierPublicKey(int(${n}), int(${n})+1),
+        public_key=PaillierPublicKey(int(${n_string}), int(${n_string})+1),
         secret_key=None,
         share_secret_key=False
       )
@@ -47,5 +49,5 @@ const partial_decryption =  await py`int(PaillierSharedKey (
 end();
 
 
-return parseInt(partial_decryption)
+return BigNumber(partial_decryption)
 }

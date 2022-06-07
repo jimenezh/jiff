@@ -1,11 +1,10 @@
 // Dependencies
+const BigNumber = require('bignumber.js');
 var http = require('http');
 var JIFFServer = require('../../lib/jiff-server.js');
+var jiffBigNumberServer = require('../../lib/ext/jiff-server-bignumber');
+var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var mpc = require('./sharing/mpc.js');
-const get_analyst_partial_dec = require('./sharing/get_other_partial_dec.js');
-const share_comb = require('./paillier/share_comb')
-const partial_rand_rec = require('./paillier/partial_rand_rec');
-var rand_comb = require('./sharing/rand_comb.js');
 
 // Create express and http servers
 var express = require('express');
@@ -14,14 +13,18 @@ http = http.Server(app);
 
 // Paillier functions
 const partial_dec = require('./paillier/partial_dec');
+const get_analyst_partial_dec = require('./sharing/get_other_partial_dec.js');
+const share_comb = require('./paillier/share_comb')
+const partial_rand_rec = require('./paillier/partial_rand_rec');
+var rand_comb = require('./sharing/rand_comb.js');
+
 // 128 bit keys
-const n = 145003400227199117427696322487384636953
-const n_2 = n*n
-const g = n+1
-const s_server = 3221617969964723778547934958085786479665640851357965522010273884159237214908
-const phi_n = 6831438583059476760
-const n_inv_mod_phi_n = 820306736477769193
-const randomness_exp = 3
+const n = BigNumber('264080106179843937231700072110084466873')
+const n_square = n.pow(2)
+const g = n.plus(1)
+const s_server =  BigNumber('16071460339175104308170947290468225669384778818848587680139105047649794055412')
+const n_inv_mod_phi_n = 18327295311094937137n
+const randomness_exp = BigNumber('7')
 const t = 2
 const party_count = 2
 const python_id = 1
@@ -46,11 +49,12 @@ var jiff_instance = new JIFFServer(http, {
   }
 });
 jiff_instance.computationMaps.maxCount['web-mpc'] = 100000; // upper bound on how input parties can submit!
+jiff_instance.apply_extension(jiffBigNumberServer);
 
 // Specify the computation server code for this demo
 var computationClient = jiff_instance.compute('web-mpc', {
   crypto_provider: true,
-  Zp: n_2,
+  Zp: n_square,
   safemod: false,
   hooks: {
     computeShares: function(instance, secret, parties_list, threshold, Zp){
@@ -59,11 +63,13 @@ var computationClient = jiff_instance.compute('web-mpc', {
       return share_map
     },
     receiveShare: [function(instance, sender_id, share){
-      console.log("receive ", BigInt(share).toString(), sender_id)
+      console.log("receive ", share, typeof(share), sender_id)
       return share
     }]
   }
 });
+computationClient.apply_extension(jiff_bignumber);
+
 computationClient.wait_for([1], function () {
   // Perform server-side computation.
   console.log('Computation initialized!');
