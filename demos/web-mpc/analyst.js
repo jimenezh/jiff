@@ -33,25 +33,6 @@ const private_key = {
   party_count: party_count,
   rand_exp: randomness_exp
 }
-// Handle storing and loading keys
-var KEYS_FILE = 'keys.json';
-function save_keys() {
-  var public_key = '['+jiffClient.public_key.toString()+']';
-  var secret_key = '['+jiffClient.secret_key.toString()+']';
-  var obj = '{ "public_key": ' + public_key + ', "secret_key": ' + secret_key + '}';
-  fs.writeFileSync(path.join(__dirname, KEYS_FILE), obj);
-}
-function load_keys() {
-  try {
-    var obj = require('./' + KEYS_FILE);
-    obj.secret_key = new Uint8Array(obj.secret_key);
-    obj.public_key = new Uint8Array(obj.public_key);
-    return obj;
-  } catch (err) {
-    // key file does not exist
-    return { public_key: null, secret_key: null };
-  }
-}
 
 // For reading actions from the command line
 var rl = readline.createInterface({
