@@ -63,7 +63,6 @@ var computationClient = jiff_instance.compute('web-mpc', {
       return share_map
     },
     receiveShare: [function(instance, sender_id, share){
-      console.log("receive ", share, typeof(share), sender_id)
       return share
     }]
   }
@@ -92,11 +91,11 @@ computationClient.wait_for([1], function () {
 
     // execute the mpc protocol
     mpc(computationClient, party_count).then(function (sum_ciphertext) {
-      console.log("SUM CIPHERTEXT IS: ", sum_ciphertext);
+      console.log("SUM CIPHERTEXT IS: ", sum_ciphertext.toPrecision());
 
     // Partial decryption
     partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){ 
-    console.log("PARTIAL DECRYPTION IS:",  partial_decryption)
+    console.log("PARTIAL DECRYPTION IS:",  partial_decryption.toPrecision())
     // Share with client
     computationClient.share(partial_decryption, 1, [1], [ computationClient.id ]);  
     // Get analyst partial decryption
@@ -104,15 +103,15 @@ computationClient.wait_for([1], function () {
       // Share combine
       partial_dict = {1: partial_decryption, 2: analyst_partial_dec}
       share_comb(private_key,partial_dict ).then(function (plaintext){
-        console.log("TOTAL SUM IS:", plaintext)
+        console.log("TOTAL SUM IS:", plaintext.toPrecision())
 
         // Randomness Recovery
         // Compute randomness of sum
         partial_rand_rec(private_key, sum_ciphertext, plaintext).then(function (rand){
-          console.log("PARTIAL RANDOMNESS IS:", rand);
+          console.log("PARTIAL RANDOMNESS IS:", rand.toPrecision());
           rand_comb(computationClient, rand).then(function (total_rand){
               
-            console.log("TOTAL RANDOMNESS IS:", total_rand)
+            console.log("TOTAL RANDOMNESS IS:", total_rand.toPrecision())
 
             setTimeout(function () {
               console.log('Shutting Down!');
