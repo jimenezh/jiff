@@ -17,7 +17,6 @@ module.exports = async function (n,  plaintext) {
 
     ex`from tno.mpc.encryption_schemes.paillier import PaillierCiphertext, Paillier, PaillierPublicKey`
     // Create paillier encryption scheme and then encrypt plaintext
-    console.log(n, plaintext)
     ciphertext = await py`str(Paillier(
         public_key=PaillierPublicKey(int(${n.toPrecision()}), int(${n.toPrecision()})+1),
         secret_key=None,
@@ -27,6 +26,5 @@ module.exports = async function (n,  plaintext) {
 
 
     end();
-    console.log('ciphertext os ', ciphertext)
     return BigNumber(ciphertext)
 }

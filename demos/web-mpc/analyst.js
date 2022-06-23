@@ -14,22 +14,36 @@ const share_comb = require('./paillier/share_comb');
 const partial_rand_rec = require('./paillier/partial_rand_rec');
 const rand_comb = require('./sharing/rand_comb.js');
 
-const n =  BigNumber('264080106179843937231700072110084466873')
-const n_square = n.pow(2)
-const g = n.plus(1)
-const s_analyst = BigNumber('28988199722604156253450775183257599379428758752015878310648682558621290677955')
-const phi_n = 24376625185831748040n
-const n_inv_mod_phi_n = 18327295311094937137n
-const randomness_exp = BigNumber('18327295311094937130')
-const t = 2
+// Key Constants 
+const t = 2 // threshold for Paillier decryption
 const party_count = 2
 const python_id = 2
+// Initializing key variables
+var n; // Public key
+var secret_key; // Secret decryption key
+var randomness_exp; // Secret randomness recovery exponent
 
+// Loading keys
+var KEYS_FILE = 'keys.json';
+try {
+  var obj = require('./' + KEYS_FILE);
+  n = BigNumber(obj.n);
+  secret_key = BigNumber(obj.analyst_secret_key);
+  randomness_exp = BigNumber(obj.analyst_randomness_exponent)
+} catch (err) {
+  // key file does not exist
+  return;
+}
+
+// Computing n^2, modulus for encryption/decryption
+var n_square = n.pow(2)
+
+// Creating full private key object
 const private_key = {
   n: n,
   threshold: t,
   id: python_id,
-  s: s_analyst, 
+  s: secret_key, 
   party_count: party_count,
   rand_exp: randomness_exp
 }
@@ -49,11 +63,6 @@ var options = {
   safemod: false
 };
 
-// Load the keys in case they were previously saved (otherwise we get back nulls)
-var keys = load_keys();
-options.public_key = keys.public_key;
-options.secret_key = keys.secret_key;
-
 options.hooks = {
   computeShares: function(instance, secret, parties_list, threshold, Zp){
     var share_map = {}
@@ -71,8 +80,6 @@ jiffClient.apply_extension(jiff_bignumber);
 
 // Wait for server to connect
 jiffClient.wait_for(['s1'], function () {  
-  save_keys(); // save the keys in case we need them again in the future
-
   // Wait for user input
   console.log('Computation initialized!');
   console.log('Hit enter when you decide it is time to compute!');

@@ -18,22 +18,36 @@ const share_comb = require('./paillier/share_comb')
 const partial_rand_rec = require('./paillier/partial_rand_rec');
 var rand_comb = require('./sharing/rand_comb.js');
 
-// 128 bit keys
-const n = BigNumber('264080106179843937231700072110084466873')
-const n_square = n.pow(2)
-const g = n.plus(1)
-const s_server =  BigNumber('16071460339175104308170947290468225669384778818848587680139105047649794055412')
-const n_inv_mod_phi_n = 18327295311094937137n
-const randomness_exp = BigNumber('7')
-const t = 2
+// Key Constants 
+const t = 2 // threshold for Paillier decryption
 const party_count = 2
 const python_id = 1
+// Initializing key variables
+var n; // Public key
+var secret_key; // Secret decryption key
+var randomness_exp; // Secret randomness recovery exponent
 
+// Loading keys
+var KEYS_FILE = 'keys.json';
+try {
+  var obj = require('./' + KEYS_FILE);
+  n = BigNumber(obj.n);
+  secret_key = BigNumber(obj.server_secret_key);
+  randomness_exp = BigNumber(obj.server_randomness_exponent)
+} catch (err) {
+  // key file does not exist
+  return;
+}
+
+// Computing n^2, modulus for encryption/decryption
+var n_square = n.pow(2)
+
+// Creating full private key object
 const private_key = {
   n: n,
   threshold: t,
   id: python_id,
-  s: s_server, 
+  s: secret_key, 
   party_count: party_count,
   rand_exp: randomness_exp
 }

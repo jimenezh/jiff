@@ -4,9 +4,16 @@ var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 
 const encrypt = require('./paillier/encrypt');
 
-const n =  BigNumber('264080106179843937231700072110084466873')
+var KEYS_FILE = 'keys.json';
+try {
+  var obj = require('./' + KEYS_FILE);
+  n = BigNumber(obj.n);
+} catch (err) {
+  // key file does not exist
+  return;
+}
+
 const n_square = n.pow(2)
-const g = n.plus(1)
 
 options = {
   Zp: n_square,
@@ -20,7 +27,6 @@ options.hooks = {
 
     parties_list.forEach( id => share_map[id] = ciphertext)
 
-    console.log(BigNumber(ciphertext.toString()).toPrecision())
     return share_map
 
   }
@@ -37,7 +43,7 @@ encrypt(n, input).then(function (ciphertext){
   jiffClient.wait_for([1, 's1'], function () {
     console.log('Connected! ID: ' + jiffClient.id);
     jiffClient.share(ciphertext, 1, [1, 's1'], [ jiffClient.id ]);
-    console.log('Shared input!', ciphertext);
+    console.log('Shared input!', ciphertext.toPrecision());
     jiffClient.disconnect(true, true);
     console.log('Disconnected!');
   });
