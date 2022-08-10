@@ -2,7 +2,7 @@ module.exports = function (jiffClient, party_count) {
   // Receive shares from all parties that submitted
   var shares = {};
   for (var i = 2; i <= party_count; i++) {
-    shares[i] = jiffClient.share(null, 1, [1, 's1'], [ i ])[i];
+    shares[i] = jiffClient.share(null, 1, [jiffClient.id], [ i ])[i];
   }
   // Sum everyone's shares
   var sum = shares[2];
@@ -10,6 +10,6 @@ module.exports = function (jiffClient, party_count) {
     sum = sum.smult(shares[p]);
   }
 
-  // Open the resulting sum only to the analyst
-  return jiffClient.open(sum, ['s1', 1]);
+  // Open the resulting sum only the party
+  return jiffClient.open(sum, [jiffClient.id]);
 };

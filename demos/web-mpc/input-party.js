@@ -34,7 +34,10 @@ options.hooks = {
 
 // Read command line arguments
 var input = BigNumber(process.argv[2], 10);
+start_encrypt = performance.now()
 encrypt(n, input).then(function (ciphertext){
+  end_encrypt = performance.now() - start_encrypt
+  console.log(end_encrypt)
   var jiffClient = new JIFFClient('http://localhost:8080', 'web-mpc', options);
   // Applyying big number extension
   jiffClient.apply_extension(jiff_bignumber);

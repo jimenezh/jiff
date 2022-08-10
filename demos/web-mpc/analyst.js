@@ -6,7 +6,7 @@ var readline = require('readline');
 
 var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var JIFFClient = require('../../lib/jiff-client.js');
-var mpc = require('./sharing/mpc.js');
+var mpc = require('./sharing/sum_paillier_shares.js');
 
 const partial_dec = require('./paillier/partial_dec');
 const get_server_partial_dec = require('./sharing/get_other_partial_dec');
@@ -85,7 +85,7 @@ jiffClient.wait_for(['s1'], function () {
   console.log('Hit enter when you decide it is time to compute!');
   rl.on('line', function (_) {
     // Send begin signal
-    jiffClient.emit('begin', [ 's1' ], '');
+    jiffClient.emit('public key', [ 's1' ], '2048');
 
     // Receive number of parties from server
     jiffClient.listen('number', function (_, party_count) {
