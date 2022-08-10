@@ -6,47 +6,10 @@ var readline = require('readline');
 
 var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var JIFFClient = require('../../lib/jiff-client.js');
-var mpc = require('./sharing/mpc.js');
+var mpc = require('./sharing/sum_paillier_shares.js');
+const paillierBigint = require('paillier-bigint');
 
-const partial_dec = require('./paillier/partial_dec');
-const get_server_partial_dec = require('./sharing/get_other_partial_dec');
-const share_comb = require('./paillier/share_comb');
-const partial_rand_rec = require('./paillier/partial_rand_rec');
-const rand_comb = require('./sharing/rand_comb.js');
-
-// Key Constants 
-const t = 2 // threshold for Paillier decryption
-const party_count = 2
-const python_id = 2
-// Initializing key variables
-var n; // Public key
-var secret_key; // Secret decryption key
-var randomness_exp; // Secret randomness recovery exponent
-
-// Loading keys
-var KEYS_FILE = 'keys.json';
-try {
-  var obj = require('./' + KEYS_FILE);
-  n = BigNumber(obj.n);
-  secret_key = BigNumber(obj.analyst_secret_key);
-  randomness_exp = BigNumber(obj.analyst_randomness_exponent)
-} catch (err) {
-  // key file does not exist
-  return;
-}
-
-// Computing n^2, modulus for encryption/decryption
-var n_square = n.pow(2)
-
-// Creating full private key object
-const private_key = {
-  n: n,
-  threshold: t,
-  id: python_id,
-  s: secret_key, 
-  party_count: party_count,
-  rand_exp: randomness_exp
-}
+const kappa = 128
 
 // For reading actions from the command line
 var rl = readline.createInterface({
@@ -59,14 +22,13 @@ var rl = readline.createInterface({
 var options = {
   crypto_provider: true, // do not bother with preprocessing for this demo
   party_id: 1, // we are the analyst => we want party_id = 1
-  Zp: n_square,
   safemod: false
 };
 
 options.hooks = {
-  computeShares: function(instance, secret, parties_list, threshold, Zp){
+  computeShares: function (instance, secret, parties_list, threshold, Zp) {
     var share_map = {}
-    parties_list.forEach( id => share_map[id] = secret)
+    parties_list.forEach(id => share_map[id] = secret)
     return share_map
   },
 }
@@ -79,58 +41,49 @@ var jiffClient = new JIFFClient('http://localhost:8080', 'web-mpc', options);
 jiffClient.apply_extension(jiff_bignumber);
 
 // Wait for server to connect
-jiffClient.wait_for(['s1'], function () {  
-  // Wait for user input
-  console.log('Computation initialized!');
-  console.log('Hit enter when you decide it is time to compute!');
-  rl.on('line', function (_) {
-    // Send begin signal
-    jiffClient.emit('begin', [ 's1' ], '');
+jiffClient.wait_for(['s1'], function () {
+  // Generate keys
+  paillierBigint.generateRandomKeys(kappa).then(function ({ publicKey, privateKey }) {
+    const N = BigNumber(publicKey.n.toString());
 
-    // Receive number of parties from server
-    jiffClient.listen('number', function (_, party_count) {
-      // Computation starts
-      party_count = parseInt(party_count);
-      console.log('BEGIN: # of parties ' + party_count);
+    // Sending public key to server
+    jiffClient.emit('public key', ['s1'], N.toPrecision());
+    // Receive server's public key
+    jiffClient.listen('public key', function (_, serverN) {
+      // Creating public key for servrer
+      const serverNBI = BigInt(serverN);
+      const publicKeyServer = new paillierBigint.PublicKey(serverNBI, serverNBI + 1n);
+      console.log("Received public key from server", publicKeyServer.n);
 
+      // Wait for user input
+      console.log('Computation initialized!');
+      console.log('Hit enter when all input parties have joined!');
+      rl.once('line', function (_) {
+        // Send begin signal
+        jiffClient.emit('ready', ['s1'], '');
 
-      mpc(jiffClient, party_count).then(function (sum_ciphertext) {
-        console.log("SUM CIPHERTEXT IS: ", sum_ciphertext.toPrecision())
+        // Receive number of parties from server
+        jiffClient.listen('number', function (_, party_count) {
+          // TODO: Send public key to input parties (assume 1)
+          input_parties = ['2'];
+          jiffClient.emit('public key analyst', input_parties, N.toPrecision());
 
-        // Get partial decryption
-        partial_dec(private_key, sum_ciphertext).then(function (partial_decryption){
-        console.log("PARTIAL DECRYPTION IS: ",  partial_decryption.toPrecision())
+          console.log('Hit enter to start computation!');
+          // Computation starts
+          party_count = parseInt(party_count);
+          rl.once('line', function (_) {
+            console.log('BEGIN: # of parties ' + party_count);
+            jiffClient.emit('begin', ['s1'], '');
+            // Computations
 
-        // Share with server
-        jiffClient.share(partial_decryption, 1, ['s1'], [ jiffClient.id ]);
-        // Server's partial dec
-        get_server_partial_dec(jiffClient, partial_decryption).then(function (server_partial_dec){
-          // Share combine to get plaintext
-          partial_dict = {1: partial_decryption, 2: server_partial_dec}
-          share_comb(private_key, partial_dict).then(function (plaintext){
-            console.log("TOTAL SUM IS: ", plaintext.toPrecision());
-            
-            // Randomness Recovery
-          // Compute randomness of sum
-          partial_rand_rec(private_key, sum_ciphertext, plaintext).then(function (rand){
-            console.log("PARTIAL RANDOMNESS IS: ", rand.toPrecision());
-            // Get total randomness, i.e. the product of analyst and server's partial randomness
-            rand_comb(jiffClient, rand).then(function (total_rand){
-              console.log("TOTAL RANDOMNESS IS:", total_rand.toPrecision())
-              // Verification step?
+            jiffClient.disconnect(true, true);
+            rl.close();
 
-              jiffClient.disconnect(true, true);
-              rl.close();
-            });
           });
-          })
-        })
-
-
-        
-
-    });
+        });
       });
+
+
     });
   });
-});
+}) 
