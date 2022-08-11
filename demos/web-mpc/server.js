@@ -19,7 +19,6 @@ kappa = 128;
 
 
 paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, privateKey }) {
-  console.log(publicKey)
   // Big Number Version for later
   const serverN = BigNumber(publicKey.n.toString());
 
@@ -46,11 +45,9 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
         return share_map
       },
       receiveShare: [function (instance, sender_id, share) {
-        console.log("received ", share.toPrecision(), sender_id)
         return share
       }],
       receiveOpen: [function (instance, sender_id, share, Zp) {
-        console.log('open', share.toPrecision(), Zp.toPrecision())
         return share
 
       }]
@@ -101,40 +98,19 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
             sumPlaintextBN = BigNumber(sumPlaintextBI.toString());
 
-            console.log('SUM IS', sumPlaintextBN.toPrecision());
+            console.log('SUM IS', sumPlaintextBI);
 
             // Sending to Analyst
             computationClient.emit('result', [1], sumPlaintextBN.toPrecision());
 
+            // clean shutdown
+            setTimeout(function () {
+              console.log('Shutting Down!');
+              http.close();
+            }, 1000);
           });
-          // clean shutdown
-          setTimeout(function () {
-            console.log('Shutting Down!');
-            http.close();
-          }, 1000);
         })
-
       });
-
-
-
-      // As compute parties, we have to
-      /* 
-      1. 
-      1. Send public key to analyst
-      1. Receive public key from analyst (assume there is one party)
-      1. Get parties and send key to parties
-      1.  Receive ready from analyst that input parties have keys
-      1. send number of parties to analyst, who sends their public key
-      1. Receive begin from analyst that input parties are done
-      2. Receive shares from input parties -- 
-      3. Sum shares (paillier) and decrypt
-      4. Send to analyst --
-      5. Receive from analyst -- 
-      6. Compute sum again (plaintext) and output
-      
-      */
-
     });
   });
 })

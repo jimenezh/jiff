@@ -40,11 +40,9 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
       return share_map
     },
     receiveShare: [function (instance, sender_id, share) {
-      console.log("received ", share.toPrecision(), sender_id)
       return share
     }],
     receiveOpen: [function (instance, sender_id, share, Zp) {
-      console.log('open', share.toPrecision(), Zp.toPrecision())
       return share
     }]
   }
@@ -91,20 +89,19 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
             console.log('BEGIN: # of parties ' + party_count);
             jiffClient.emit('begin', ['s1'], '');
             // Computations
-
             sumShares(jiffClient, party_count).then(function (sumEncryptionBN) {
               sumEncryptionBI = BigInt(sumEncryptionBN.toPrecision());
 
               sumPlaintext = privateKey.decrypt(sumEncryptionBI);
 
               sumPlaintextBN = BigNumber(sumPlaintext.toString());
-              console.log('SUM IS', sumPlaintext, sumEncryptionBI);
+              console.log('SUM IS', sumPlaintext);
 
               jiffClient.listen('result', function (_, serverSumString) {
                 serverSumBN = BigNumber(serverSumString);
                 total = jiffClient.helpers.mod(sumPlaintextBN.add(serverSumBN), ring);
 
-                console.log("TOTAL SUM IS", total.toPrecision(), ring.toPrecision());
+                console.log("TOTAL SUM IS", total.toPrecision());
 
                 jiffClient.disconnect(true, true);
                 rl.close();

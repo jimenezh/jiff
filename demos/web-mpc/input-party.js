@@ -3,7 +3,6 @@ const BigNumber = require('bignumber.js');
 var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 const paillierBigint = require('paillier-bigint');
 
-const encrypt = require('./paillier/encrypt');
 const share = require('../../lib/client/share.js');
 
 const k = 4;
@@ -19,7 +18,6 @@ options.hooks = {
   computeShares: function (instance, secret, parties_list, threshold, Zp) {
     share_map = {}
     parties_list.forEach(id => share_map[id] = ciphertext)
-    console.log(share_map, Zp)
     return share_map
   }
 }
@@ -43,7 +41,7 @@ jiffClient.wait_for([1, 's1'], function () {
     const serverNBI = BigInt(serverN);
     const serverNBN = BigNumber(serverN);
     const publicKeyServer = new paillierBigint.PublicKey(serverNBI, serverNBI + 1n);
-    console.log("Received public key from server", publicKeyServer);
+    console.log("Received public key from server", publicKeyServer.n);
 
 
     jiffClient.listen('public key analyst', function (_, analystN) {
@@ -51,12 +49,10 @@ jiffClient.wait_for([1, 's1'], function () {
       const analystNBI = BigInt(analystN);
       const analystNBN = BigNumber(analystN);
       const publicKeyAnalyst = new paillierBigint.PublicKey(analystNBI, analystNBI + 1n);
-      console.log("Received public key from analyst", publicKeyAnalyst);
+      console.log("Received public key from analyst", publicKeyAnalyst.n);
 
       // Generate random share for server by choosing number mod 2^k and then encrypting
-      // sign = jiffClient.helpers.random(1).equals(BigNumber(0)) ? -1 : 1;
-      sign = 1;
-      console.log(sign)
+      sign = jiffClient.helpers.random(1).equals(BigNumber(0)) ? -1 : 1;
       share1Plaintext = jiffClient.helpers.random(ring).times(sign);
       share1Mod = jiffClient.helpers.mod(share1Plaintext, ring);
       // Encrypt
@@ -71,14 +67,9 @@ jiffClient.wait_for([1, 's1'], function () {
       // Encrypt as before
       share2BI = publicKeyAnalyst.encrypt(BigInt(share2Mod.toPrecision()));
       share2 = BigNumber(share2BI.toString());
-      
-
-      console.log('sshare 1', share1Plaintext.toPrecision(), share1Mod.toPrecision(), share1.toPrecision())
-      console.log('sshare 2', share2Plaintext.toPrecision(), share2Mod.toPrecision(), share2.toPrecision(), analystNBN.toPrecision())
 
       jiffClient.share(share1, 1, ['s1'], [jiffClient.id], serverNBN.pow(2));
       jiffClient.share(share2, 1, [1], [jiffClient.id], analystNBN.pow(2));
-
 
       console.log('Shared input!', input.toPrecision());
       jiffClient.disconnect(true, true);
