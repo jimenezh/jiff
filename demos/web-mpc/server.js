@@ -5,16 +5,17 @@ var JIFFServer = require('../../lib/jiff-server.js');
 var jiffBigNumberServer = require('../../lib/ext/jiff-server-bignumber');
 var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var sumShares = require('./sharing/sum_paillier_shares.js');
-const paillierBigint = require('paillier-bigint')
+const paillierBigint = require('paillier-bigint');
+const genRandomnessRecKey = require('./paillier/gen_randrec_key.js');
+const recoverRandomness = require('./paillier/recover_randomness');
 
 // Create express and http servers
 var express = require('express');
-const { send } = require('process');
 var app = express();
 http = http.Server(app);
 
 // key size
-kappa = 128;
+kappa = 52;
 
 
 
@@ -55,6 +56,8 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
   });
   computationClient.apply_extension(jiff_bignumber);
 
+  // Randomness recovery key
+  const x = genRandomnessRecKey(computationClient, serverN, privateKey._p, privateKey._q);
   computationClient.wait_for([1], function () {
 
     // Perform server-side computation.
@@ -98,8 +101,15 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
             sumPlaintextBN = BigNumber(sumPlaintextBI.toString());
 
+            // Get randomness
+            const r = recoverRandomness(computationClient, serverN, x, sumPlaintextBN, sumEncryptionBN);  
+            const rBI = BigInt(r.toPrecision());
+
+            cprime = publicKey.encrypt(sumPlaintextBI, rBI);
+
             console.log('SUM IS', sumPlaintextBI);
 
+            console.log("Plaintext",  sumPlaintextBI, 'encrypted with ', rBI,' is ', sumEncryptionBI, "==?", cprime)
             // Sending to Analyst
             computationClient.emit('result', [1], sumPlaintextBN.toPrecision());
 
@@ -113,7 +123,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
       });
     });
   });
-})
+});
 
 http.listen(8080, function () {
   console.log('listening on *:8080');

@@ -5,7 +5,7 @@ const paillierBigint = require('paillier-bigint');
 
 const share = require('../../lib/client/share.js');
 
-const k = 4;
+const k = 16;
 const kBN = BigNumber(k);
 const ring = BigNumber(2).pow(kBN);
 

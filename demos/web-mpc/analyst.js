@@ -8,10 +8,11 @@ var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 var JIFFClient = require('../../lib/jiff-client.js');
 var sumShares = require('./sharing/sum_paillier_shares.js');
 const paillierBigint = require('paillier-bigint');
-const { sum } = require('numeric');
+const genRandomnessRecKey = require('./paillier/gen_randrec_key.js');
+const recoverRandomness = require('./paillier/recover_randomness');
 
-const kappa = 128
-const k = 4
+const kappa = 52
+const k = 16
 const ring = BigNumber(2).pow(k)
 
 // For reading actions from the command line
@@ -54,6 +55,10 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
   // Applying big number extension
   jiffClient.apply_extension(jiff_bignumber);
 
+  // RR key
+  const x = genRandomnessRecKey(jiffClient, N, privateKey._p, privateKey._q);
+  console.log(x.toPrecision(), "x")
+
   // Wait for server to connect
   jiffClient.wait_for(['s1'], function () {
 
@@ -92,10 +97,17 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
             sumShares(jiffClient, party_count).then(function (sumEncryptionBN) {
               sumEncryptionBI = BigInt(sumEncryptionBN.toPrecision());
 
-              sumPlaintext = privateKey.decrypt(sumEncryptionBI);
+              sumPlaintextBI = privateKey.decrypt(sumEncryptionBI);
 
-              sumPlaintextBN = BigNumber(sumPlaintext.toString());
-              console.log('SUM IS', sumPlaintext);
+              sumPlaintextBN = BigNumber(sumPlaintextBI.toString());
+              console.log('SUM IS', sumPlaintextBI);
+
+              // Get randomness
+              const r = recoverRandomness(jiffClient, N, x, sumPlaintextBN, sumEncryptionBN);
+              const rBI = BigInt(r.toPrecision());
+              // Re-encrypt to check
+              cprime = publicKey.encrypt(sumPlaintextBI, rBI);
+              console.log("Plaintext", sumPlaintextBI, 'encrypted with ', rBI, ' is ', sumEncryptionBI, "==?", cprime)
 
               jiffClient.listen('result', function (_, serverSumString) {
                 serverSumBN = BigNumber(serverSumString);
