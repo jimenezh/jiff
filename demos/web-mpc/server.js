@@ -15,7 +15,7 @@ var app = express();
 http = http.Server(app);
 
 // key size
-kappa = 52;
+kappa = 2048;
 
 
 
@@ -56,16 +56,13 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
   });
   computationClient.apply_extension(jiff_bignumber);
 
+  console.log('Key generation is finished!');
+
   // Randomness recovery key
   const x = genRandomnessRecKey(computationClient, serverN, privateKey._p, privateKey._q);
   computationClient.wait_for([1], function () {
-
-    // Perform server-side computation.
-    console.log('Computation initialized!');
-
-
     // Send public key to analyst
-    computationClient.emit('public key', [1], serverN.toPrecision());
+    computationClient.emit('public key', [1], serverN.toString(10));
     // Receive public key from analyst
     computationClient.listen('public key', function (_, analystN) {
       // Create Paillier public key with BigInt
@@ -86,7 +83,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
         computationClient.emit('number', [1], party_count.toString());
         // Send public key and # parties to all input parties
         for (id = 2; id <= party_count; id++) {
-          computationClient.emit('public key server', [id], serverN.toPrecision() + "," + party_count.toString());
+          computationClient.emit('public key server', [id], serverN.toString(10) + "," + party_count.toString());
         }
 
         // Wait for signal that input parties have keys and have sent input
@@ -95,7 +92,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
           // Computations
           sumShares(computationClient, party_count).then(function (sumEncryptionBN) {
 
-            sumEncryptionBI = BigInt(sumEncryptionBN.toPrecision());
+            sumEncryptionBI = BigInt(sumEncryptionBN.toString(10));
 
             sumPlaintextBI = privateKey.decrypt(sumEncryptionBI);
 
@@ -103,7 +100,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
             // Get randomness
             const r = recoverRandomness(computationClient, serverN, x, sumPlaintextBN, sumEncryptionBN);  
-            const rBI = BigInt(r.toPrecision());
+            const rBI = BigInt(r.toString(10));
 
             cprime = publicKey.encrypt(sumPlaintextBI, rBI);
 
@@ -111,7 +108,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
             console.log("Plaintext",  sumPlaintextBI, 'encrypted with ', rBI,' is ', sumEncryptionBI, "==?", cprime)
             // Sending to Analyst
-            computationClient.emit('result', [1], sumPlaintextBN.toPrecision());
+            computationClient.emit('result', [1], sumPlaintextBN.toString(10));
 
             // clean shutdown
             setTimeout(function () {
@@ -131,7 +128,7 @@ http.listen(8080, function () {
 
 console.log('web-mpc demo..');
 console.log('The steps for running are as follows:');
-console.log('1. Run the analyst (node analyst.js)');
-console.log('2. After the analyst sets up the computation, you can choose to terminate it or leave it around');
-console.log('3. Run "node input-party.js <input number>" to create a new input party and submit its input');
-console.log('4. When desired, press enter in the analyst terminal (after re-running it if previously closed) to compute the output and close the session');
+console.log('1. Run the analyst (node analyst.js) when directed to (after server generates keys)');
+console.log('2. Run "node input-party.js <input number>" to create a new input party and submit its input after the analyst has finished computing its keys');
+console.log('3. When all input parties have joined, press enter in the analut terminal so input parties can send their input');
+console.log('4. When desired, press enter in the analyst terminal to compute the output and close the session');

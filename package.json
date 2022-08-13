@@ -42,7 +42,7 @@
     "build": "browserify lib/jiff-client.js --debug -s JIFFClient -o dist/jiff-client.js && browserify lib/ext/jiff-client-websockets.js --debug -s jiff_websockets -o dist/jiff-client-websockets.js"
   },
   "dependencies": {
-    "bignumber.js": "^5.0.0",
+    "bignumber.js": "^9.1.0",
     "cross-env": "^5.0.5",
     "docdash": "^1.1.1",
     "increase-memory-limit": "^1.0.3",

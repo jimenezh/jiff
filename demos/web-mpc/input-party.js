@@ -5,7 +5,7 @@ const paillierBigint = require('paillier-bigint');
 
 const share = require('../../lib/client/share.js');
 
-const k = 16;
+const k = 52;
 const kBN = BigNumber(k);
 const ring = BigNumber(2).pow(kBN);
 
@@ -52,7 +52,7 @@ jiffClient.wait_for([1, 's1'], function () {
       console.log("Received public key from analyst", publicKeyAnalyst.n);
 
       // Generate random share for server by choosing number mod 2^k and then encrypting
-      sign = jiffClient.helpers.random(1).equals(BigNumber(0)) ? -1 : 1;
+      sign = jiffClient.helpers.random(1).eq(BigNumber(0)) ? -1 : 1;
       share1Plaintext = jiffClient.helpers.random(ring).times(sign);
       share1Mod = jiffClient.helpers.mod(share1Plaintext, ring);
       // Encrypt
@@ -62,7 +62,7 @@ jiffClient.wait_for([1, 's1'], function () {
       
 
       // Make analyst's share so that the total sums to the secret
-      share2Plaintext = input.add(share1Plaintext.times(-1));
+      share2Plaintext = input.plus(share1Plaintext.times(-1));
       share2Mod = jiffClient.helpers.mod(share2Plaintext, ring);
       // Encrypt as before
       share2BI = publicKeyAnalyst.encrypt(BigInt(share2Mod.toPrecision()));

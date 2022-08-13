@@ -11,8 +11,8 @@ const paillierBigint = require('paillier-bigint');
 const genRandomnessRecKey = require('./paillier/gen_randrec_key.js');
 const recoverRandomness = require('./paillier/recover_randomness');
 
-const kappa = 52
-const k = 16
+const kappa = 2048
+const k = 52
 const ring = BigNumber(2).pow(k)
 
 // For reading actions from the command line
@@ -57,14 +57,13 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
   // RR key
   const x = genRandomnessRecKey(jiffClient, N, privateKey._p, privateKey._q);
-  console.log(x.toPrecision(), "x")
 
   // Wait for server to connect
   jiffClient.wait_for(['s1'], function () {
 
 
     // Sending public key to server
-    jiffClient.emit('public key', ['s1'], N.toPrecision());
+    jiffClient.emit('public key', ['s1'], N.toString(10));
     // Receive server's public key
     jiffClient.listen('public key', function (_, serverN) {
       // Creating public key for servrer
@@ -73,7 +72,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
       console.log("Received public key from server", publicKeyServer.n);
 
       // Wait for user input
-      console.log('Computation initialized!');
+      console.log('Key generation is finished!');
       console.log('Hit enter when all input parties have joined!');
       rl.once('line', function (_) {
         // Send begin signal
@@ -83,7 +82,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
         jiffClient.listen('number', function (_, party_count) {
           // Send public key to input parties
           for (id = 2; id <= party_count; id++) {
-            jiffClient.emit('public key analyst', [id], N.toPrecision());
+            jiffClient.emit('public key analyst', [id], N.toString(10));
           }
 
 
@@ -95,7 +94,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
             jiffClient.emit('begin', ['s1'], '');
             // Computations
             sumShares(jiffClient, party_count).then(function (sumEncryptionBN) {
-              sumEncryptionBI = BigInt(sumEncryptionBN.toPrecision());
+              sumEncryptionBI = BigInt(sumEncryptionBN.toString(10));
 
               sumPlaintextBI = privateKey.decrypt(sumEncryptionBI);
 
@@ -104,16 +103,16 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
               // Get randomness
               const r = recoverRandomness(jiffClient, N, x, sumPlaintextBN, sumEncryptionBN);
-              const rBI = BigInt(r.toPrecision());
+              const rBI = BigInt(r.toString(10));
               // Re-encrypt to check
               cprime = publicKey.encrypt(sumPlaintextBI, rBI);
               console.log("Plaintext", sumPlaintextBI, 'encrypted with ', rBI, ' is ', sumEncryptionBI, "==?", cprime)
 
               jiffClient.listen('result', function (_, serverSumString) {
                 serverSumBN = BigNumber(serverSumString);
-                total = jiffClient.helpers.mod(sumPlaintextBN.add(serverSumBN), ring);
+                total = jiffClient.helpers.mod(sumPlaintextBN.plus(serverSumBN), ring);
 
-                console.log("TOTAL SUM IS", total.toPrecision());
+                console.log("TOTAL SUM IS", total.toString(10));
 
                 jiffClient.disconnect(true, true);
                 rl.close();
