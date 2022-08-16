@@ -31,7 +31,7 @@ jiffClient.apply_extension(jiff_bignumber);
 
 // Wait for server to connect
 jiffClient.wait_for([1, 's1'], function () {
-  console.log('Connected! ID: ' + jiffClient.id);
+  console.log('Connected! ID: ' + jiffClient.id, process.argv[2]);
   jiffClient.listen('public key server', function (_, response) {
     // Parsing response
     strarray = response.split(",");
@@ -41,7 +41,7 @@ jiffClient.wait_for([1, 's1'], function () {
     const serverNBI = BigInt(serverN);
     const serverNBN = BigNumber(serverN);
     const publicKeyServer = new paillierBigint.PublicKey(serverNBI, serverNBI + 1n);
-    console.log("Received public key from server", publicKeyServer.n);
+    // console.log("Received public key from server", publicKeyServer.n);
 
 
     jiffClient.listen('public key analyst', function (_, analystN) {
@@ -49,7 +49,10 @@ jiffClient.wait_for([1, 's1'], function () {
       const analystNBI = BigInt(analystN);
       const analystNBN = BigNumber(analystN);
       const publicKeyAnalyst = new paillierBigint.PublicKey(analystNBI, analystNBI + 1n);
-      console.log("Received public key from analyst", publicKeyAnalyst.n);
+      // console.log("Received public key from analyst", publicKeyAnalyst.n);
+
+      // Start of measurement
+      start = performance.now();
 
       // Generate random share for server by choosing number mod 2^k and then encrypting
       sign = jiffClient.helpers.random(1).eq(BigNumber(0)) ? -1 : 1;
@@ -59,7 +62,7 @@ jiffClient.wait_for([1, 's1'], function () {
       share1BI = publicKeyServer.encrypt(BigInt(share1Mod.toPrecision()));
       // Make into bignumber
       share1 = BigNumber(share1BI.toString());
-      
+
 
       // Make analyst's share so that the total sums to the secret
       share2Plaintext = input.plus(share1Plaintext.times(-1));
@@ -68,12 +71,23 @@ jiffClient.wait_for([1, 's1'], function () {
       share2BI = publicKeyAnalyst.encrypt(BigInt(share2Mod.toPrecision()));
       share2 = BigNumber(share2BI.toString());
 
+      // End of measurement
+      end = performance.now();
+      // console.log("Paillier Encryption took:", end - start);
+      const fs = require('fs');
+      fs.appendFile(`performance/${process.argv[3]}_input.log`, (end-start).toString() + "\n", err => {
+        if (err) {
+          console.error(err);
+        }
+        // done!
+      });
+
       jiffClient.share(share1, 1, ['s1'], [jiffClient.id], serverNBN.pow(2));
       jiffClient.share(share2, 1, [1], [jiffClient.id], analystNBN.pow(2));
 
       console.log('Shared input!', input.toPrecision());
       jiffClient.disconnect(true, true);
-      console.log('Disconnected!');
+      // console.log('Disconnected!');
     });
   });
 });

@@ -10,6 +10,8 @@ var sumShares = require('./sharing/sum_paillier_shares.js');
 const paillierBigint = require('paillier-bigint');
 const genRandomnessRecKey = require('./paillier/gen_randrec_key.js');
 const recoverRandomness = require('./paillier/recover_randomness');
+const remOverflow = require('./paillier/rem_overflow');
+const writeResults = require('./performance/write_results_compute_parties');
 
 const kappa = 2048
 const k = 52
@@ -21,17 +23,18 @@ var rl = readline.createInterface({
   output: process.stdout,
   terminal: false
 });
-
+start_keygen = performance.now()
 // Generate keys
 paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, privateKey }) {
+  end_keygen = performance.now()
   const N = BigNumber(publicKey.n.toString());
-
+  const NSquare = N.pow(2);
   // Options for creating the jiff instance
   var options = {
     crypto_provider: true, // do not bother with preprocessing for this demo
     party_id: 1, // we are the analyst => we want party_id = 1
     safemod: false,
-    Zp: N.pow(2)
+    Zp: NSquare
   };
 
   options.hooks = {
@@ -54,9 +57,10 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
   // Applying big number extension
   jiffClient.apply_extension(jiff_bignumber);
-
+  start_keygenrand = performance.now()
   // RR key
-  const x = genRandomnessRecKey(jiffClient, N, privateKey._p, privateKey._q);
+  const { phiN, x } = genRandomnessRecKey(jiffClient, N, privateKey._p, privateKey._q);
+  end_keygenrand = performance.now()
 
   // Wait for server to connect
   jiffClient.wait_for(['s1'], function () {
@@ -93,26 +97,48 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
             console.log('BEGIN: # of parties ' + party_count);
             jiffClient.emit('begin', ['s1'], '');
             // Computations
+            start_comp = performance.now()
             sumShares(jiffClient, party_count).then(function (sumEncryptionBN) {
               sumEncryptionBI = BigInt(sumEncryptionBN.toString(10));
 
               sumPlaintextBI = privateKey.decrypt(sumEncryptionBI);
 
               sumPlaintextBN = BigNumber(sumPlaintextBI.toString());
-              console.log('SUM IS', sumPlaintextBI);
+
+              // Remove Overflow from sumEncryption
+              var { C, cPrimeBN } = remOverflow(jiffClient, kappa, k, party_count - 1, N, phiN, NSquare, sumEncryptionBN, sumPlaintextBN, publicKey);
+
+              // Decrypting c prime
+              cPrimeBI = BigInt(cPrimeBN.toString(10));
+              mPrimeBI = privateKey.decrypt(cPrimeBI);
+              mPrimeBN = BigNumber(mPrimeBI.toString());
 
               // Get randomness
-              const r = recoverRandomness(jiffClient, N, x, sumPlaintextBN, sumEncryptionBN);
+              const r = recoverRandomness(jiffClient, N, x, mPrimeBN, cPrimeBN);
               const rBI = BigInt(r.toString(10));
+
+              console.log("C IS", sumEncryptionBI);
+              console.log("0/1 CIPHERTEXTS ARE", C)
+              console.log("C' IS", cPrimeBI);
+              console.log("M' IS", mPrimeBI, sumPlaintextBI);
+              console.log("R' IS", rBI);
+
               // Re-encrypt to check
-              cprime = publicKey.encrypt(sumPlaintextBI, rBI);
-              console.log("Plaintext", sumPlaintextBI, 'encrypted with ', rBI, ' is ', sumEncryptionBI, "==?", cprime)
+              console.log(mPrimeBI, rBI, cPrimeBI, "==", publicKey.encrypt(mPrimeBI, rBI));
+              end_comp = performance.now()
 
               jiffClient.listen('result', function (_, serverSumString) {
                 serverSumBN = BigNumber(serverSumString);
-                total = jiffClient.helpers.mod(sumPlaintextBN.plus(serverSumBN), ring);
-
+                start_comp2 = performance.now()
+                total = jiffClient.helpers.mod(mPrimeBN.plus(serverSumBN), ring);
+                end_comp2 = performance.now()
                 console.log("TOTAL SUM IS", total.toString(10));
+                console.log("Key Gen took:", end_keygen - start_keygen + end_keygenrand + start_keygen);
+                console.log("Computations took", end_comp - start_comp + end_comp2 - start_comp2);
+
+                keygenPerf = end_keygen - start_keygen + end_keygenrand + start_keygen;
+                compPerf = end_comp - start_comp;
+                writeResults(process.argv[2], keygenPerf, compPerf);
 
                 jiffClient.disconnect(true, true);
                 rl.close();

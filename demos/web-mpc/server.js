@@ -8,20 +8,29 @@ var sumShares = require('./sharing/sum_paillier_shares.js');
 const paillierBigint = require('paillier-bigint');
 const genRandomnessRecKey = require('./paillier/gen_randrec_key.js');
 const recoverRandomness = require('./paillier/recover_randomness');
-
+const writeResults = require('./performance/write_results_compute_parties');
 // Create express and http servers
 var express = require('express');
+const { performance } = require('perf_hooks');
+const remOverflow = require('./paillier/rem_overflow.js');
 var app = express();
 http = http.Server(app);
 
+BigNumber.config({ MODULO_MODE: BigNumber.EUCLID })
+
+
 // key size
 kappa = 2048;
+// Ring size 
+k = 52
 
-
-
+// Start of key gen
+start_keygen = performance.now()
 paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, privateKey }) {
+  end_keygen = performance.now()
   // Big Number Version for later
   const serverN = BigNumber(publicKey.n.toString());
+  const serverNSquare = serverN.pow(2);
 
   // Create JIFF server
   var jiff_instance = new JIFFServer(http, {
@@ -38,7 +47,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
   var computationClient = jiff_instance.compute('web-mpc', {
     crypto_provider: true,
     safemod: false,
-    Zp: serverN.pow(2),
+    Zp: serverNSquare,
     hooks: {
       computeShares: function (instance, secret, parties_list, threshold, ring) {
         share_map = {}
@@ -58,8 +67,11 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
   console.log('Key generation is finished!');
 
+  start_keygenrand = performance.now()
   // Randomness recovery key
-  const x = genRandomnessRecKey(computationClient, serverN, privateKey._p, privateKey._q);
+  const { phiN, x } = genRandomnessRecKey(computationClient, serverN, privateKey._p, privateKey._q);
+  end_keygenrand = performance.now()
+
   computationClient.wait_for([1], function () {
     // Send public key to analyst
     computationClient.emit('public key', [1], serverN.toString(10));
@@ -90,6 +102,7 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
         computationClient.listen('begin', function (_) {
           console.log("All input parties have submitted inputs. Starting computations!")
           // Computations
+          start_comp = performance.now()
           sumShares(computationClient, party_count).then(function (sumEncryptionBN) {
 
             sumEncryptionBI = BigInt(sumEncryptionBN.toString(10));
@@ -98,17 +111,36 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
             sumPlaintextBN = BigNumber(sumPlaintextBI.toString());
 
+            // Remove Overflow from sumEncryption
+            var { C, cPrimeBN } = remOverflow(computationClient, kappa, k, party_count - 1, serverN, phiN, serverNSquare, sumEncryptionBN, sumPlaintextBN, publicKey);
+
+            // Decrypting c prime
+            cPrimeBI = BigInt(cPrimeBN.toString(10));
+            mPrimeBI = privateKey.decrypt(cPrimeBI);
+            mPrimeBN = BigNumber(mPrimeBI.toString());
+
             // Get randomness
-            const r = recoverRandomness(computationClient, serverN, x, sumPlaintextBN, sumEncryptionBN);  
+            const r = recoverRandomness(computationClient, serverN, x, mPrimeBN, cPrimeBN);
             const rBI = BigInt(r.toString(10));
 
-            cprime = publicKey.encrypt(sumPlaintextBI, rBI);
+            console.log("C IS", sumEncryptionBI);
+            console.log("0/1 CIPHERTEXTS ARE", C)
+            console.log("C' IS", cPrimeBI);
+            console.log("M' IS", mPrimeBI);
+            console.log("R' IS", rBI);
 
-            console.log('SUM IS', sumPlaintextBI);
+            console.log(mPrimeBI, rBI, cPrimeBI, "==", publicKey.encrypt(mPrimeBI, rBI));
+            end_comp = performance.now()
 
-            console.log("Plaintext",  sumPlaintextBI, 'encrypted with ', rBI,' is ', sumEncryptionBI, "==?", cprime)
+            keygenPerf = end_keygen-start_keygen+end_keygenrand+start_keygen;
+            compPerf = end_comp-start_comp;
+            console.log("Key Gen took:", keygenPerf);
+            console.log("Computations took", compPerf);
+
+            writeResults(process.argv[2], keygenPerf.toString(), compPerf.toString());
+
             // Sending to Analyst
-            computationClient.emit('result', [1], sumPlaintextBN.toString(10));
+            computationClient.emit('result', [1], mPrimeBN.toString(10));
 
             // clean shutdown
             setTimeout(function () {
