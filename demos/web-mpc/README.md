@@ -1,18 +1,6 @@
 # WEB-MPC in JIFF
 A (basic) demo for asynchronously and securly summing secrets from many input parties, with only two compute parties: a server, and an analyst.
 
-## Setup
-In jiff directory, run the following  commands:
-* npm install python-bridge
-* python3 -m .
-* source bin/activate
-
-Install the following pip packages within the virtual envirnoment
-* pip3 install tno.mpc.protocols.distributed_keygen[gmpy]
-* pip3 install git+https://github.com/jimenezh/protocols.distributed_keygen
-
-Make sure to keep the python environment active during the execution. 
-
 ## Roles
 We have three roles:
 * Server (server.js): handles routing and storing all communications, and participates in the final aggregation with analyst.
@@ -27,16 +15,25 @@ In addition, when the analyst chooses, the aggregation is executed in MPC betwee
 ``` node analyst.js```
 3. Run as many input parties as desired:
 ``` node input-party.js ($INPUT\_VALUE) ```
-4. Whenever desired: hit enter into the analyst's terminal to begin computation.
+4. Hit enter into the analyst's terminal when all input parties have joined
+5. Press enter once all input parties have sent their input to start computation.
 
 The order of these steps can be changed as follows:
-1. Analyst may leave computation after initial setup (**but before any input party submits**), and re-join when desired to perform the aggregation. Simply Ctrl+c to exist analyst, and then re-run command to re-join.
-2. Parties may leave computation at any time after sharing their inputs.
-3. Server may be run before or after analyst, as long as analyst remains online until the server starts for the initial setup.
-4. Input parties can only run after analyst runs: since they need its public key and the computation id. If you run the input party code before the analyst sets up the computation. The code will wait for that to happen,
-submit the input, and then exit.
+1. Analyst must wait until the server finishes its key generation
+4. Input parties can only run after analyst runs: since they need its public key and the computation id. 
+
+## The OUV Protocol
+The OUV protocol allows for secure addition by leveraging Paillier Encryption over a ring. Computation parties (server + analyst) generate Paillier keys and provide the public with their public Paillier keys. Input parties generate two additive shares over the ring that add to their input and encrypt one with the server's public key and the other with the analyst's public key. Once the compute parties receive all the encryptions under their own key, they sum these and decrypt the sum. An important part is that the compute parties only public the sum plaintext mod the ring. In order to have verifiability in this part of the protocol, the compute parties verifiable remove the overflow bots from the sum ciphertext, and post the original ciphertext, the resulting ciphertext without the overflow bits, the plaintext mod the ring, and the randomness corresponding the plaintext-ciphertext pair. The sum from each compute party can then be summed into the sum of all the input parties' inputs.
+
+A verifier can easily check the computations by checking that the input parties' encryptions um to the ciphertext posted by the compute parties and that these indeed correspondings to the ciphertext without the overflow bit. After, the verifier can re-encrypt the plaintext mode the ring with the randomness and check that it's equal to the resultig ciphertext posted.
+
+## Paillier Encryption
+
+This demo was built upon the original web-mpc demo. For paillier encryption, [paillier-bigint](https://github.com/juanelas/paillier-bigint) was used. 
 
 ## Keys
+This section refers to the keys used for communication between partie that JIFF uses, NOT the Paillier keys.
+
 By default, jiff generates a random public/private key pair for every party whenever a party is created.
 
 The analyst needs to have the same private key that was used to initialize the computation in order to run aggregation, otherwise all shares encrypted by the input
@@ -50,20 +47,9 @@ Finally, the server is usually responsible for delivering all parties keys to ea
 you have to ensure delivery of the keys to the parties via some other channel (e.g. post request to the analyst directly, reading from a file, etc), and make sure these keys
 are passed to the constructor of JIFFClient at the input parties, in a similar way to how analyst.js loads keys.
 
-# Paillier Threshold
 
-This demo uses [https://github.com/Submersible/node-python-bridge](python-bridge) to spawn a python interpreter and use a [https://github.com/jimenezh/protocols.distributed_keygen](Paillier threshold decryption library which supports randomness-recovery) based on the [https://github.com/TNO-MPC/protocols.distributed_keygen](TNO library). 
-
-# The real WEB-MPC
-This is a stripped down demo showing the high level organization and implementation idea. We have built and regularly deployed a more sophisticated platform of a similar name for computing statistics over private data.
-You can find the implementation here [https://github.com/multiparty/web-mpc](https://github.com/multiparty/web-mpc)
-
-Noteable features:
-1. Same architecture: a server, analyst, and a bunch of input parties.
-2. All parties have authentication: the analyst has a password required to manage sessions, input parties are given a session key and a user token id (independently via email).
-3. Input parties can re-submit their data as many times as they like prior to the analyst closing the session (to correct mistakes).
-4. Better tracking of parties that submit inputs via hooks.
-5. The platform computes averages and standard deviations of values submitted as a spread sheet format.
-6. The platform groups values according to the spread sheet structure. Optionally, it can additionally group input parties into cohorts (either pre-assigned or self-assigned).
-7. All shares and other important state is stored in a mongo database on the server that interfaces with JIFF via JIFF hooks.
-8. Analyst and input parties are all browser based, with nice UIs compatible with older browsers (IE 11).
+## Future Work
+- Creating a Paillier library using BigNumber to resolve the conversions between BigInt and BigNumber
+- Generating additive shares along with the JIFF workflow rather than separately
+- Adding ZKP for Paillier public keys from [TumbleBit](https://github.com/osagga/TumbleBitSetup)
+- Cut + Choose pre-processing for the 0/1 encryptions used to remove overflow bits
