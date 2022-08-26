@@ -138,7 +138,6 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
 
                 keygenPerf = end_keygen - start_keygen + end_keygenrand + start_keygen;
                 compPerf = end_comp - start_comp;
-                writeResults(process.argv[2], keygenPerf, compPerf);
 
                 jiffClient.disconnect(true, true);
                 rl.close();

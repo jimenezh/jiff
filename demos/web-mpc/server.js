@@ -137,8 +137,6 @@ paillierBigint.generateRandomKeys(kappa, true).then(function ({ publicKey, priva
             console.log("Key Gen took:", keygenPerf);
             console.log("Computations took", compPerf);
 
-            writeResults(process.argv[2], keygenPerf.toString(), compPerf.toString());
-
             // Sending to Analyst
             computationClient.emit('result', [1], mPrimeBN.toString(10));
 

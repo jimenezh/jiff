@@ -3,8 +3,6 @@ const BigNumber = require('bignumber.js');
 var jiff_bignumber = require('../../lib/ext/jiff-client-bignumber');
 const paillierBigint = require('paillier-bigint');
 
-const share = require('../../lib/client/share.js');
-
 const k = 52;
 const kBN = BigNumber(k);
 const ring = BigNumber(2).pow(kBN);
@@ -73,14 +71,7 @@ jiffClient.wait_for([1, 's1'], function () {
 
       // End of measurement
       end = performance.now();
-      // console.log("Paillier Encryption took:", end - start);
-      const fs = require('fs');
-      fs.appendFile(`performance/${process.argv[3]}_input.log`, (end-start).toString() + "\n", err => {
-        if (err) {
-          console.error(err);
-        }
-        // done!
-      });
+      console.log("Paillier Encryption took:", end - start);
 
       jiffClient.share(share1, 1, ['s1'], [jiffClient.id], serverNBN.pow(2));
       jiffClient.share(share2, 1, [1], [jiffClient.id], analystNBN.pow(2));
