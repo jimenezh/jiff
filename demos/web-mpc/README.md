@@ -47,9 +47,19 @@ Finally, the server is usually responsible for delivering all parties keys to ea
 you have to ensure delivery of the keys to the parties via some other channel (e.g. post request to the analyst directly, reading from a file, etc), and make sure these keys
 are passed to the constructor of JIFFClient at the input parties, in a similar way to how analyst.js loads keys.
 
+## Testing
+Logs for the performance can be found [here](https://github.com/jimenezh/jiff/tree/web-mpc-ouv/demos/web-mpc/performance/results) and were generating with the bash script test.sh. To reproduce:
+
+1. Checkout commit 63dd918b7730b121ab3f44b2b3e1e83a2f3d67ba 
+2. In test.sh, change `exp` to be the power of 2 desired (call this i)
+3. Run `server.js i` as normal
+4. Run `analyst.js i` as normal
+5. Run `test.sh` in a separate terminal
+6. Once all parties have submitted, their input, run the analyst as normal
 
 ## Future Work
 - Creating a Paillier library using BigNumber to resolve the conversions between BigInt and BigNumber
 - Generating additive shares along with the JIFF workflow rather than separately
 - Adding ZKP for Paillier public keys from [TumbleBit](https://github.com/osagga/TumbleBitSetup)
 - Cut + Choose pre-processing for the 0/1 encryptions used to remove overflow bits
+- Improve testing
