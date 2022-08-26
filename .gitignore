@@ -191,3 +191,12 @@ bin/
 lib/python3.8
 pyvenv.cfg
 isympy.1
+
+# Include the following logs
+!0*.log
+!1*.log
+!2*.log
+!4*.log
+!5*.log
+!6*.log
+!7*.log
